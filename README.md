@@ -1,6 +1,6 @@
 # WebOS Manager v2
 
-A terminal UI for managing and controlling LG WebOS TVs over the network. Now powered by [bscpylgtv](https://github.com/chros73/bscpylgtv) for better screenshot support and more features.
+A terminal UI for managing and controlling LG WebOS TVs over the network. Powered by [bscpylgtv](https://github.com/chros73/bscpylgtv) for screenshot support, picture settings, remote buttons, service menus, and more.
 
 ---
 
@@ -18,8 +18,8 @@ A terminal UI for managing and controlling LG WebOS TVs over the network. Now po
 ```bash
 sudo pacman -S git python
 
-git clone https://github.com/Atractyve/WebOS-Manager-v2.git
-cd WebOS-Manager-v2
+git clone https://github.com/Atractyve/webos-manager-v2.git
+cd webos-manager-v2
 
 python -m venv .venv
 
@@ -36,7 +36,7 @@ python src/main.py
 To run again later:
 
 ```bash
-cd WebOS-Manager-v2
+cd webos-manager-v2
 
 # bash/zsh:
 source .venv/bin/activate
@@ -49,8 +49,8 @@ python src/main.py
 ### Windows
 
 ```
-git clone https://github.com/Atractyve/WebOS-Manager-v2.git
-cd WebOS-Manager-v2
+git clone https://github.com/Atractyve/webos-manager-v2.git
+cd webos-manager-v2
 
 python -m venv .venv
 .venv\Scripts\activate
@@ -83,7 +83,7 @@ If you already have a client key, you can add it manually to `~/.webos-manager/r
 
 Once connected to a TV, type any command into the terminal input and press Enter. All commands are called on the `client` object.
 
-### Volume
+### Volume & Audio
 
 | Command | Description |
 | --- | --- |
@@ -93,20 +93,25 @@ Once connected to a TV, type any command into the terminal input and press Enter
 | `client.set_mute(True)` | Mute |
 | `client.set_mute(False)` | Unmute |
 | `client.get_volume()` | Get current volume level |
+| `client.get_audio_status()` | Get current audio status |
+| `client.get_sound_output()` | Get current audio output |
+| `client.change_sound_output("tv_speaker")` | Change audio output |
 
-### Power
+### Power & Screen
 
 | Command | Description |
 | --- | --- |
-| `client.power_off()` | Turn off the TV |
-| `client.screen_off()` | Turn off the screen (keep TV on) |
-| `client.screen_on()` | Turn the screen back on |
+| `client.power_off()` | Turn off the TV (standby) |
+| `client.turn_screen_off()` | Turn off the screen (keep TV on) |
+| `client.turn_screen_on()` | Turn the screen back on |
+| `client.get_power_state()` | Get current power state |
+| `client.reboot()` | Full reboot the TV |
 
 ### Screenshot
 
 | Command | Description |
 | --- | --- |
-| `client.take_screenshot()` | Take a screenshot (returns imageUri) |
+| `client.take_screenshot()` | Take a screenshot (returns `imageUri` with HTTP link) |
 
 ### Playback
 
@@ -132,26 +137,58 @@ Once connected to a TV, type any command into the terminal input and press Enter
 
 | Command | Description |
 | --- | --- |
-| `client.get_apps_all()` | List all installed apps |
+| `client.get_apps_all()` | List all installed apps (including hidden) |
 | `client.get_current_app()` | Get the currently open app |
 | `client.launch_app("app.id.here")` | Launch an app by ID |
 | `client.close_app("app.id.here")` | Close an app by ID |
+| `client.launch_app_with_params("app.id", {"key": "val"})` | Launch app with parameters |
 
 ### Inputs
 
 | Command | Description |
 | --- | --- |
 | `client.get_inputs()` | List all available inputs (HDMI etc.) |
-| `client.set_input("HDMI_1")` | Switch to a specific input |
+| `client.get_input()` | Get current input |
+| `client.set_input("HDMI_2")` | Switch to a specific input |
+| `client.set_device_info("HDMI_2", "pc", "PC")` | Set PC mode for an input |
+| `client.set_device_info("HDMI_2", "hometheater", "Home Theatre")` | Set Home Theatre mode |
 
-### Info & State
+### Remote Buttons
 
 | Command | Description |
 | --- | --- |
-| `client.get_system_info()` | System info |
-| `client.get_software_info()` | Firmware and software version |
-| `client.get_power_state()` | Current power state |
-| `client.get_sound_output()` | Current audio output |
+| `client.button("INFO")` | Press INFO button |
+| `client.button("HOME")` | Press HOME button |
+| `client.button("BACK")` | Press BACK button |
+| `client.button("LEFT")` | Press LEFT button |
+| `client.button("RIGHT")` | Press RIGHT button |
+| `client.button("UP")` | Press UP button |
+| `client.button("DOWN")` | Press DOWN button |
+| `client.button("ENTER")` | Press ENTER/OK button |
+| `client.button("MENU")` | Press MENU button |
+| `client.button("MUTE")` | Press MUTE button |
+| `client.button("RED")` | Press RED button |
+| `client.button("GREEN")` | Press GREEN button |
+| `client.button("YELLOW")` | Press YELLOW button |
+| `client.button("BLUE")` | Press BLUE button |
+
+### Picture Settings
+
+| Command | Description |
+| --- | --- |
+| `client.get_picture_settings(["backlight", "contrast"])` | Get specific picture settings |
+| `client.set_current_picture_mode("expert2")` | Switch picture preset |
+| `client.set_system_settings("picture", {"backlight": 0, "contrast": 85})` | Set picture values |
+| `client.set_settings("picture", {"backlight": 0})` | Set picture values (alt) |
+
+### System Settings
+
+| Command | Description |
+| --- | --- |
+| `client.get_system_settings("option", ["country"])` | Get system settings |
+| `client.get_system_info()` | Get system info |
+| `client.get_software_info()` | Get firmware/software version |
+| `client.get_configs(["tv.model.*"])` | Get config values |
 
 ### Notifications
 
@@ -165,6 +202,18 @@ Once connected to a TV, type any command into the terminal input and press Enter
 | --- | --- |
 | `client.request("ssap://uri/here")` | Send any SSAP request |
 | `client.request("ssap://uri", {"key": "val"})` | SSAP request with payload |
+
+### Hidden Menus & Advanced
+
+| Command | Description |
+| --- | --- |
+| `client.launch_app("com.webos.app.installation")` | Installation menu (Hotel Mode, Set ID, etc.) |
+| `client.launch_app("com.webos.app.screensaver")` | Launch screensaver |
+| `client.launch_app_with_params("com.webos.app.tvhotkey", {"activateType": "mute-hidden-action"})` | 3x MUTE hidden menu |
+| `client.launch_app_with_params("com.webos.app.tvhotkey", {"activateType": "freesync-info"})` | 7x GREEN FreeSync info |
+| `client.launch_app_with_params("com.webos.app.factorywin", {"id": "executeFactory", "irKey": "inStart"})` | In-Start Service Menu (code: 0413) |
+| `client.launch_app_with_params("com.webos.app.factorywin", {"id": "executeFactory", "irKey": "ezAdjust"})` | Ez-Adjust Service Menu (code: 0413) |
+| `client.launch_app_with_params("com.palm.app.settings", {"target": "PictureMode"})` | Picture mode settings |
 
 ---
 
@@ -181,4 +230,8 @@ Rooms are stored at:
 
 - Switched from `aiowebostv` to `bscpylgtv` for better API support
 - Screenshot support via `client.take_screenshot()`
-- More available commands (calibration, picture settings, etc.)
+- Remote button presses via `client.button()`
+- Picture/system settings control
+- Hidden menu access
+- Service menu access
+- Device info / PC mode toggling

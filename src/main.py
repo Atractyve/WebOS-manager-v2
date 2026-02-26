@@ -1,10 +1,31 @@
 import json
 import os
+import re
+import webbrowser
+import subprocess
 from textual.app import App, ComposeResult
 from textual.widgets import Header, Footer, DataTable, Input, Label, RichLog
 from textual.screen import Screen
 from textual.binding import Binding
 from bscpylgtv import WebOsClient
+
+URL_PATTERN = re.compile(r'https?://[^\s\'">\]]+')
+
+
+def copy_to_system_clipboard(text: str):
+    """Copy text to system clipboard using available tools."""
+    try:
+        if os.path.exists("/usr/bin/wl-copy"):
+            subprocess.run(["wl-copy", text], check=True)
+        elif os.path.exists("/usr/bin/xclip"):
+            subprocess.run(["xclip", "-selection", "clipboard"], input=text.encode(), check=True)
+        elif os.path.exists("/usr/bin/xsel"):
+            subprocess.run(["xsel", "--clipboard", "--input"], input=text.encode(), check=True)
+        else:
+            return False
+    except Exception:
+        return False
+    return True
 
 CONFIG_FILE = os.path.expanduser("~/.webos-manager/rooms.json")
 
@@ -222,6 +243,8 @@ class TerminalInput(Input):
 class ControlScreen(Screen):
     BINDINGS = [
         Binding("escape", "app.pop_screen", "Disconnect"),
+        Binding("ctrl+y", "copy_last", "Copy Last Output"),
+        Binding("ctrl+o", "open_last_url", "Open Last URL"),
     ]
 
     def __init__(self, name: str, ip: str, client: WebOsClient):
@@ -231,6 +254,8 @@ class ControlScreen(Screen):
         self.client = client
         self.history = []
         self.history_index = -1
+        self.last_output = ""
+        self.last_url = ""
 
     def compose(self) -> ComposeResult:
         yield Header()
@@ -242,8 +267,27 @@ class ControlScreen(Screen):
     def on_mount(self):
         self.query_one("#cmd", TerminalInput).focus()
         self.query_one(RichLog).write(
-            "Type any command e.g: client.power_off()  |  client.volume_up()  |  client.take_screenshot()"
+            "Type any command e.g: client.power_off()  |  client.volume_up()  |  client.take_screenshot()\n"
+            "[dim]Ctrl+Y: copy last output  |  Ctrl+O: open last URL in browser[/dim]"
         )
+
+    def action_copy_last(self):
+        log = self.query_one(RichLog)
+        if self.last_output:
+            if copy_to_system_clipboard(self.last_output):
+                log.write("[dim green]Copied to clipboard.[/dim green]")
+            else:
+                log.write("[dim red]No clipboard tool found (install wl-copy, xclip, or xsel).[/dim red]")
+        else:
+            log.write("[dim yellow]Nothing to copy.[/dim yellow]")
+
+    def action_open_last_url(self):
+        log = self.query_one(RichLog)
+        if self.last_url:
+            log.write(f"[dim green]Opening: {self.last_url}[/dim green]")
+            webbrowser.open(self.last_url)
+        else:
+            log.write("[dim yellow]No URL found in last output.[/dim yellow]")
 
     def action_history_up(self):
         if self.history and self.history_index < len(self.history) - 1:
@@ -275,12 +319,25 @@ class ControlScreen(Screen):
             client = self.client
             result = await eval(cmd)
             if result is None:
+                self.last_output = "OK"
                 log.write("[green]OK[/green]")
             elif isinstance(result, (dict, list)):
-                log.write(json.dumps(result, indent=2, default=str))
+                output = json.dumps(result, indent=2, default=str)
+                self.last_output = output
+                log.write(output)
             else:
-                log.write(str(result))
+                output = str(result)
+                self.last_output = output
+                log.write(output)
+
+            # Detect URLs in output and store the last one
+            urls = URL_PATTERN.findall(self.last_output)
+            if urls:
+                self.last_url = urls[-1]
+                log.write(f"[bold blue underline]{self.last_url}[/bold blue underline]")
+                log.write("[dim]Press Ctrl+O to open in browser  |  Ctrl+Y to copy output[/dim]")
         except Exception as e:
+            self.last_output = str(e)
             log.write(f"[red]Error: {e}[/red]")
 
 
